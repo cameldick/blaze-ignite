@@ -12,6 +12,9 @@ value everywhere amounts appear.
 No virtual coins, no AI gimmicks — every overlay is driven by a genuine Blaze
 EventSub event, delivered in real time over WebSocket.
 
+**▶ Live demo:** https://blaze-ignite-web.vercel.app — connect your own Blaze
+channel and drop the overlay URLs into OBS.
+
 ---
 
 ## Table of contents
