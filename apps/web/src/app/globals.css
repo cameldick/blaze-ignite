@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: #0a0a0c;
+  color: #fafafa;
+}
+
+/* Overlay pages must be fully transparent for OBS browser sources. */
+.overlay-root {
+  background: transparent !important;
+}

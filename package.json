@@ -1,0 +1,27 @@
+{
+  "name": "blaze-ignite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Blaze Ignite — Tip-to-Action engine for the Blaze Builder Challenge. Real on-chain tips drive live, verified OBS overlay actions.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev:web": "npm run dev --workspace apps/web",
+    "dev:bridge": "npm run dev --workspace apps/bridge",
+    "db:generate": "npm run db:generate --workspace packages/db",
+    "db:migrate": "npm run db:migrate --workspace packages/db"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,142 @@
+// Blaze Ignite data model.
+// Postgres is the source of truth for idempotency (Event) and analytics.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// A creator account (one human, may own multiple channels).
+model User {
+  id        String   @id @default(cuid())
+  blazeId   String   @unique
+  username  String
+  email     String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  channels  Channel[]
+}
+
+/// A connected Blaze channel. Holds encrypted OAuth tokens.
+model Channel {
+  id              String   @id @default(cuid())
+  blazeChannelId  String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  displayName     String
+  /// AES-GCM encrypted at rest; never returned to the client.
+  accessTokenEnc  String
+  refreshTokenEnc String?
+  tokenExpiresAt  DateTime?
+  scopes          String[]
+  /// Rotating public token used in overlay URLs (revocable without OAuth churn).
+  overlayToken    String   @unique @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  rules   ActionRule[]
+  events  Event[]
+  goals   Goal[]
+  tipWars TipWar[]
+  bosses  Boss[]
+
+  @@index([userId])
+}
+
+/// Raw normalized event log. Idempotency + analytics source of truth.
+/// Blaze money events carry no currency or tx hash; `amount` is unitless.
+/// `actorAddress` holds the voter wallet on `vote` events.
+model Event {
+  id            String   @id @default(cuid())
+  channel       Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId     String
+  /// Upstream-stable id; dedupe key together with channelId + kind.
+  sourceEventId String
+  kind          String
+  actorId       String?
+  actorName     String?
+  actorAddress  String?
+  amount        Float?
+  message       String?
+  occurredAt    DateTime
+  receivedAt    DateTime @default(now())
+  /// Full normalized event payload for replay/debug.
+  payload       Json
+
+  @@unique([channelId, kind, sourceEventId])
+  @@index([channelId, occurredAt])
+  @@index([channelId, kind])
+}
+
+/// Creator-authored tip -> action mapping (see shared/rules.ts ActionRule).
+model ActionRule {
+  id        String   @id @default(cuid())
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId String
+  enabled   Boolean  @default(true)
+  priority  Int      @default(100)
+  /// RuleMatch JSON.
+  match     Json
+  /// ActionConfig JSON (discriminated by `type`).
+  action    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([channelId, enabled])
+}
+
+model Goal {
+  id        String   @id @default(cuid())
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId String
+  title     String
+  target    Float
+  current   Float    @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([channelId, active])
+}
+
+model TipWar {
+  id        String          @id @default(cuid())
+  channel   Channel         @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId String
+  title     String
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  options   TipWarOption[]
+
+  @@index([channelId, active])
+}
+
+model TipWarOption {
+  id      String  @id @default(cuid())
+  war     TipWar  @relation(fields: [warId], references: [id], onDelete: Cascade)
+  warId   String
+  label   String
+  /// Optional keyword in a thanks message that routes support to this option.
+  keyword String?
+  total   Float   @default(0)
+
+  @@index([warId])
+}
+
+model Boss {
+  id            String   @id @default(cuid())
+  channel       Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId     String
+  name          String
+  maxHp         Float
+  hp            Float
+  rewardText    String?
+  defeated      Boolean  @default(false)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@index([channelId, active])
+}
