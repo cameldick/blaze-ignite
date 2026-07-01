@@ -9,8 +9,9 @@ services:
     name: blaze-ignite-bridge
     runtime: node
     plan: free
+    # --include=dev so TypeScript/@types build even with NODE_ENV=production set.
     buildCommand: >-
-      npm ci &&
+      npm ci --include=dev &&
       npm run build --workspace packages/shared &&
       npm run db:generate &&
       npm run build --workspace apps/bridge
