@@ -82,45 +82,93 @@ export function DashboardApp({
   }, [reload]);
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-black">{channelName}</h1>
-          <p className="mt-1 text-sm text-emerald-400">● Connected</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div
-            className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 text-sm"
-            title="Live $BLAZE price from the Avalanche DEX (DexScreener)"
-          >
-            <span className="text-zinc-500">$BLAZE </span>
-            <span className="font-semibold text-ignite">
-              {price != null ? `$${price.toLocaleString("en-US", { maximumSignificantDigits: 4 })}` : "—"}
-            </span>
+    <div className="relative min-h-screen">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-56 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(255,90,31,0.10),transparent_70%)]"
+      />
+
+      {/* brand bar */}
+      <div className="border-b border-zinc-800/80 bg-zinc-950/40 backdrop-blur">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3">
+          <Link href="/" className="flex items-center gap-2 font-black tracking-tight">
+            <span>🔥</span> Blaze Ignite
+          </Link>
+          <div className="flex items-center gap-3">
+            <div
+              className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 text-sm"
+              title="Live $BLAZE price from the Avalanche DEX (DexScreener)"
+            >
+              <span className="text-zinc-500">$BLAZE </span>
+              <span className="font-semibold text-ignite">
+                {price != null ? `$${price.toLocaleString("en-US", { maximumSignificantDigits: 4 })}` : "—"}
+              </span>
+            </div>
+            <PoweredByBlaze className="hidden sm:inline-flex" />
           </div>
-          <nav className="flex gap-3 text-sm">
-          <Link href="/dashboard/analytics" className="rounded-lg border border-zinc-700 px-3 py-1.5 hover:border-zinc-500">
-            Analytics
-          </Link>
-          <Link href="/dashboard/diagnostics" className="rounded-lg border border-zinc-700 px-3 py-1.5 hover:border-zinc-500">
-            Diagnostics
-          </Link>
-          </nav>
         </div>
-      </header>
+      </div>
 
-      <TestEvent />
-      <Overlays base={overlayBase} />
+      <main className="mx-auto max-w-4xl px-6 py-10">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="text-xs font-medium uppercase tracking-widest text-zinc-500">Creator dashboard</div>
+            <h1 className="mt-1 text-3xl font-black">{channelName}</h1>
+            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Connected &amp; live
+            </p>
+          </div>
+          <nav className="flex gap-2 text-sm">
+            <Link href="/dashboard/analytics" className="rounded-lg border border-zinc-700 px-3 py-1.5 transition hover:border-ignite/50 hover:text-white">
+              Analytics
+            </Link>
+            <Link href="/dashboard/diagnostics" className="rounded-lg border border-zinc-700 px-3 py-1.5 transition hover:border-ignite/50 hover:text-white">
+              Diagnostics
+            </Link>
+          </nav>
+        </header>
 
-      {cfg && (
-        <>
-          <Goals goals={cfg.goals} onChange={reload} />
-          <Bosses bosses={cfg.bosses} onChange={reload} />
-          <TipWars wars={cfg.wars} onChange={reload} />
-          <Alerts rules={cfg.rules} onChange={reload} />
-        </>
-      )}
-    </main>
+        <p className="mt-3 max-w-2xl text-sm text-zinc-500">
+          Configure how your Blaze events appear on stream, then add the overlay URLs below as
+          Browser Sources in OBS. Changes apply to your overlays instantly.
+        </p>
+
+        <TestEvent />
+        <Overlays base={overlayBase} />
+
+        {cfg && (
+          <>
+            <Goals goals={cfg.goals} onChange={reload} />
+            <Bosses bosses={cfg.bosses} onChange={reload} />
+            <TipWars wars={cfg.wars} onChange={reload} />
+            <Alerts rules={cfg.rules} onChange={reload} />
+          </>
+        )}
+
+        <footer className="mt-16 flex items-center justify-between border-t border-zinc-800 pt-6 text-sm text-zinc-600">
+          <span>🔥 Blaze Ignite</span>
+          <span className="flex items-center gap-1.5">
+            Powered by{" "}
+            <a href="https://blaze.stream" target="_blank" rel="noreferrer" className="text-zinc-400 hover:text-ignite">
+              Blaze
+            </a>
+          </span>
+        </footer>
+      </main>
+    </div>
+  );
+}
+
+function PoweredByBlaze({ className = "" }: { className?: string }) {
+  return (
+    <a
+      href="https://blaze.stream"
+      target="_blank"
+      rel="noreferrer"
+      className={`inline-flex items-center gap-1.5 rounded-full border border-zinc-700/80 bg-zinc-900/60 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-ignite/50 hover:text-white ${className}`}
+    >
+      <span className="text-ignite">⚡</span> Powered by Blaze
+    </a>
   );
 }
 
