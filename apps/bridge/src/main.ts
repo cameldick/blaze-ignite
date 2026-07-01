@@ -33,8 +33,10 @@ async function main() {
 
   await manager.startAll();
 
-  httpServer.listen(config.BRIDGE_PORT, () => {
-    log.info("bridge listening", { port: config.BRIDGE_PORT, adapter: adapter.mode });
+  // Hosts like Render/Railway assign the port via $PORT; fall back to BRIDGE_PORT.
+  const port = Number(process.env.PORT) || config.BRIDGE_PORT;
+  httpServer.listen(port, () => {
+    log.info("bridge listening", { port, adapter: adapter.mode });
   });
 
   const shutdown = async (sig: string) => {
