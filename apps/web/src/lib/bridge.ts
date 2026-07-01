@@ -39,6 +39,9 @@ export async function previewAlert(
     animation: string;
     durationSec: number;
     amount?: number;
+    fontSize?: number;
+    sound?: string;
+    volume?: number;
   },
 ): Promise<void> {
   await call(`/channels/${channelId}/preview-alert`, {

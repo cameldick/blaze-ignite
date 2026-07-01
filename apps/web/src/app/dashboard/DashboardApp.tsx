@@ -21,6 +21,9 @@ type Config = {
       theme?: string;
       animation?: string;
       durationSec?: number;
+      fontSize?: number;
+      sound?: string;
+      volume?: number;
     };
   }[];
   goals: { id: string; title: string; current: number; target: number }[];
@@ -452,6 +455,11 @@ function AlertEditor({
   const [theme, setTheme] = useState(a?.theme ?? Object.keys(THEMES)[0]!);
   const [animation, setAnimation] = useState(a?.animation ?? ANIMATIONS[0]!);
   const [duration, setDuration] = useState(a?.durationSec ?? 8);
+  const [fontSize, setFontSize] = useState(a?.fontSize ?? 20);
+  const [sound, setSound] = useState<string | undefined>(a?.sound);
+  const [soundName, setSoundName] = useState<string | undefined>(a?.sound ? "current sound" : undefined);
+  const [volume, setVolume] = useState(a?.volume ?? 50);
+  const [soundErr, setSoundErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   const action = {
@@ -461,6 +469,31 @@ function AlertEditor({
     durationSec: duration,
     on: [meta.type],
     text: text.trim() || undefined,
+    fontSize,
+    sound,
+    volume,
+  };
+
+  const onSoundFile = (file?: File) => {
+    setSoundErr(null);
+    if (!file) return;
+    if (!/audio\/(mpeg|mp3)/.test(file.type) && !file.name.toLowerCase().endsWith(".mp3")) {
+      setSoundErr("MP3 files only");
+      return;
+    }
+    // Sounds are stored inline (data URL) in the alert config, so keep them small
+    // enough to travel over the overlay socket without lag.
+    if (file.size > 1024 * 1024) {
+      setSoundErr("Max 1 MB (short alert clip)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSound(String(reader.result));
+      setSoundName(file.name);
+    };
+    reader.onerror = () => setSoundErr("Could not read file");
+    reader.readAsDataURL(file);
   };
 
   const save = async () => {
@@ -477,6 +510,9 @@ function AlertEditor({
       theme,
       animation,
       durationSec: duration,
+      fontSize,
+      sound,
+      volume,
       amount: meta.type === "thanks" ? 50 : meta.type === "gift" ? 5 : undefined,
     });
 
@@ -525,6 +561,17 @@ function AlertEditor({
           />
           sec
         </label>
+        <label className="flex items-center gap-1 text-sm text-zinc-400">
+          <input
+            type="number"
+            min={10}
+            max={96}
+            value={fontSize}
+            onChange={(e) => setFontSize(Number(e.target.value))}
+            className={`${input} w-16`}
+          />
+          px
+        </label>
         <button className={btn} onClick={save}>{saved ? "Saved ✓" : rule ? "Save" : "Enable"}</button>
         <button className={btnGhost} onClick={preview} title="Fire a sample to your /alert overlay">
           Preview
@@ -542,6 +589,42 @@ function AlertEditor({
             Remove
           </button>
         )}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-zinc-800 pt-3">
+        <label className="flex items-center gap-2 text-sm text-zinc-400" title="Alert sound volume">
+          <span aria-hidden>🔊</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={volume}
+            onChange={(e) => setVolume(Number(e.target.value))}
+          />
+          <span className="w-9 tabular-nums text-xs text-zinc-500">{volume}%</span>
+        </label>
+        <label className={`${btnGhost} cursor-pointer`}>
+          {soundName ? "Change sound" : "Upload sound"}
+          <input
+            type="file"
+            accept="audio/mpeg,.mp3"
+            className="hidden"
+            onChange={(e) => onSoundFile(e.target.files?.[0])}
+          />
+        </label>
+        {soundName && (
+          <span className="flex items-center gap-2 text-xs text-zinc-500">
+            <span className="max-w-[160px] truncate">{soundName}</span>
+            <button
+              type="button"
+              className="underline underline-offset-2 hover:text-zinc-300"
+              onClick={() => { setSound(undefined); setSoundName(undefined); }}
+            >
+              remove
+            </button>
+          </span>
+        )}
+        <span className="text-xs text-zinc-600">MP3, max 1 MB</span>
+        {soundErr && <span className="text-xs text-red-400">{soundErr}</span>}
       </div>
     </div>
   );

@@ -59,6 +59,9 @@ export async function applyThanks(
             theme: action.theme ?? DEFAULT_THEME,
             animation: action.animation,
             durationSec: action.durationSec,
+            fontSize: action.fontSize,
+            sound: action.sound,
+            volume: action.volume,
           });
           break;
         case "goal": {
@@ -117,6 +120,9 @@ export function applyEventAlerts(
       theme: action.theme ?? DEFAULT_THEME,
       animation: action.animation,
       durationSec: action.durationSec,
+      fontSize: action.fontSize,
+      sound: action.sound,
+      volume: action.volume,
     });
   }
   return out;

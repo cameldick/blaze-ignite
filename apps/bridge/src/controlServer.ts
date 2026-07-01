@@ -25,6 +25,9 @@ const PreviewAlertBody = z.object({
   durationSec: z.number().positive().max(30).default(6),
   actorName: z.string().default("Supporter"),
   amount: z.number().optional(),
+  fontSize: z.number().int().min(10).max(96).optional(),
+  sound: z.string().optional(),
+  volume: z.number().min(0).max(100).optional(),
 });
 
 /**

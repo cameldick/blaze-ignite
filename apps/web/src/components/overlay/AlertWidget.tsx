@@ -15,6 +15,18 @@ export function AlertWidget({ state, pos }: { state: OverlayState; pos?: string 
 
   useEffect(() => {
     if (!current) return;
+    // Play the alert sound once, at the configured volume. Autoplay is allowed
+    // in OBS browser sources; in a plain browser tab it may be blocked until the
+    // page is interacted with, so failures are swallowed.
+    if (current.sound) {
+      try {
+        const audio = new Audio(current.sound);
+        audio.volume = Math.min(1, Math.max(0, (current.volume ?? 50) / 100));
+        void audio.play().catch(() => {});
+      } catch {
+        /* ignore audio errors — never block the visual alert */
+      }
+    }
     const t = setTimeout(() => state.dismissAlert(current._id), current.durationSec * 1000);
     return () => clearTimeout(t);
   }, [current, state]);
@@ -76,15 +88,15 @@ function AlertCard({ alert }: { alert: OverlayState["alerts"][number] }) {
             {alert.actorName.slice(0, 1).toUpperCase()}
           </div>
         )}
-        <div className="leading-tight">
+        <div className="leading-tight" style={{ fontSize: alert.fontSize ? `${alert.fontSize}px` : undefined }}>
           {alert.headline ? (
-            <div className="text-lg font-semibold">{alert.headline}</div>
+            <div className="font-semibold">{alert.headline}</div>
           ) : (
             <>
               <div className="text-sm" style={{ color: theme.muted }}>
                 {LABELS[alert.eventKind] ?? "new event"}
               </div>
-              <div className="text-lg font-semibold">{alert.actorName}</div>
+              <div className="font-semibold">{alert.actorName}</div>
             </>
           )}
         </div>

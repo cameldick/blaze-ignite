@@ -47,8 +47,15 @@ export const AlertConfig = z.object({
    * When empty, the overlay shows a default label (e.g. "new follower").
    */
   text: z.string().max(200).optional(),
-  /** Optional sound pack id. */
+  /** Alert text size in px. */
+  fontSize: z.number().int().min(10).max(96).default(20),
+  /**
+   * Optional alert sound: an MP3 as a data URL (uploaded in the dashboard) or a
+   * plain URL. Played by the overlay when the alert appears.
+   */
   sound: z.string().optional(),
+  /** Playback volume 0–100 for the alert sound. */
+  volume: z.number().min(0).max(100).default(50),
 });
 
 export const GoalConfig = z.object({

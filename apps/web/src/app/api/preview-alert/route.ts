@@ -15,6 +15,9 @@ export async function POST(req: NextRequest) {
     animation?: string;
     durationSec?: number;
     amount?: number;
+    fontSize?: number;
+    sound?: string;
+    volume?: number;
   };
   await previewAlert(r.channelId, {
     eventKind: body.eventKind ?? "thanks",
@@ -23,6 +26,9 @@ export async function POST(req: NextRequest) {
     animation: body.animation ?? "pop",
     durationSec: body.durationSec ?? 6,
     amount: body.amount,
+    fontSize: body.fontSize,
+    sound: body.sound,
+    volume: body.volume,
   });
   return NextResponse.json({ ok: true });
 }

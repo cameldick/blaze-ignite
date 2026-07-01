@@ -39,7 +39,8 @@ channel and drop the overlay URLs into OBS.
 **Overlays (OBS browser sources)**
 - **Alerts** — animated pop-ups for Thanks, follows, subscriptions, and gifted
   subs. Fully editable message per event type with `{name}` / `{amount}`
-  placeholders, per-alert theme, animation, and on-screen duration.
+  placeholders, per-alert theme, animation, on-screen duration, **font size**,
+  and a **custom sound** (MP3 upload) with volume control.
 - **Goals** — a progress bar funded by Thanks, toward a target you set.
 - **Tip-wars** — viewers pick a side by putting an option keyword in their
   Thanks message; bars race in real time.

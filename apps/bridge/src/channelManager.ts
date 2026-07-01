@@ -126,6 +126,9 @@ export class ChannelManager {
       durationSec: number;
       actorName?: string;
       amount?: number;
+      fontSize?: number;
+      sound?: string;
+      volume?: number;
     },
   ): void {
     const name = cfg.actorName ?? "Supporter";
@@ -141,6 +144,9 @@ export class ChannelManager {
       theme: cfg.theme,
       animation: cfg.animation,
       durationSec: cfg.durationSec,
+      fontSize: cfg.fontSize,
+      sound: cfg.sound,
+      volume: cfg.volume,
     });
   }
 

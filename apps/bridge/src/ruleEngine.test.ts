@@ -64,6 +64,21 @@ describe("applyEventAlerts", () => {
     }
   });
 
+  it("passes fontSize, sound, and volume through to the alert message", () => {
+    const rule = alertRule(["follow"], "{name} followed!");
+    if (rule.action.type === "alert") {
+      rule.action.fontSize = 32;
+      rule.action.sound = "data:audio/mpeg;base64,AAAA";
+      rule.action.volume = 70;
+    }
+    const m = applyEventAlerts(follow, [rule])[0]!;
+    if (m.type === "alert") {
+      expect(m.fontSize).toBe(32);
+      expect(m.sound).toBe("data:audio/mpeg;base64,AAAA");
+      expect(m.volume).toBe(70);
+    }
+  });
+
   it("ignores non-alert rules", () => {
     const goalRule: ActionRule = {
       id: "g",

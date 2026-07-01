@@ -25,6 +25,12 @@ export const ThanksAlertMsg = z.object({
   theme: z.string(),
   animation: z.enum(["glow", "pulse", "slideIn", "pop"]),
   durationSec: z.number(),
+  /** Alert text size in px. */
+  fontSize: z.number().optional(),
+  /** Alert sound (data URL or plain URL) to play when the alert appears. */
+  sound: z.string().optional(),
+  /** Playback volume 0–100 for the alert sound. */
+  volume: z.number().optional(),
 });
 
 export const GoalStateMsg = z.object({
