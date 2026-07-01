@@ -1,0 +1,33 @@
+# Render blueprint for the always-on bridge worker.
+# (The Next.js web app deploys separately on Vercel.)
+#
+# Note: Render's free web service sleeps after ~15 min of inactivity. For a
+# persistent event socket, either upgrade the plan or keep it warm by pinging
+# /health every few minutes (e.g. a free cron-job.org job).
+services:
+  - type: web
+    name: blaze-ignite-bridge
+    runtime: node
+    plan: free
+    buildCommand: >-
+      npm ci &&
+      npm run build --workspace packages/shared &&
+      npm run db:generate &&
+      npm run build --workspace apps/bridge
+    startCommand: node apps/bridge/dist/main.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BRIDGE_PORT
+        value: "4000"
+      - key: DATABASE_URL
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: BRIDGE_INTERNAL_SECRET
+        sync: false
+      - key: BLAZE_CLIENT_ID
+        sync: false
+      - key: BLAZE_CLIENT_SECRET
+        sync: false
