@@ -13,7 +13,7 @@ services:
     buildCommand: >-
       npm ci --include=dev &&
       npm run build --workspace packages/shared &&
-      npm run db:generate &&
+      npm run build --workspace packages/db &&
       npm run build --workspace apps/bridge
     startCommand: node apps/bridge/dist/main.js
     healthCheckPath: /health

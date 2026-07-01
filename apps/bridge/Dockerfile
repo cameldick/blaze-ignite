@@ -16,7 +16,7 @@ RUN npm ci
 # Build the shared package + bridge.
 COPY . .
 RUN npm run build --workspace packages/shared \
- && npm run db:generate \
+ && npm run build --workspace packages/db \
  && npm run build --workspace apps/bridge
 
 ENV NODE_ENV=production
