@@ -39,3 +39,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Local marketing notes (not for the repo)
+LAUNCH_THREAD.md
