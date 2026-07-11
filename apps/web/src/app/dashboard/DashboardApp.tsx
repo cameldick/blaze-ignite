@@ -5,7 +5,7 @@ import Link from "next/link";
 import { THEMES } from "@blaze-ignite/shared";
 import { useBlazePrice, usdBracket, usdOnly } from "@/lib/useBlazePrice";
 
-const WIDGETS = ["alert", "goal", "boss", "tipwar", "spotlight"];
+const WIDGETS = ["alert", "goal", "boss", "tipwar", "spotlight", "prediction", "oracle"];
 const ANIMATIONS = ["pop", "glow", "pulse", "slideIn"];
 
 type Config = {
@@ -29,6 +29,22 @@ type Config = {
   goals: { id: string; title: string; current: number; target: number }[];
   wars: { id: string; title: string; options: { id: string; label: string; total: number }[] }[];
   bosses: { id: string; name: string; hp: number; maxHp: number; defeated: boolean }[];
+  predictions: {
+    id: string;
+    title: string;
+    status: string;
+    winningOptionId: string | null;
+    options: { id: string; label: string; keyword: string; backers: number; thanksTotal: number }[];
+  }[];
+  oracle: {
+    id: string;
+    actorName: string;
+    points: number;
+    wins: number;
+    losses: number;
+    streak: number;
+    bestStreak: number;
+  }[];
 };
 
 const j = (method: string, url: string, body?: unknown) =>
@@ -141,6 +157,8 @@ export function DashboardApp({
 
         {cfg && (
           <>
+            <Predictions predictions={cfg.predictions} onChange={reload} />
+            <OracleBoard oracle={cfg.oracle} onChange={reload} />
             <Goals goals={cfg.goals} onChange={reload} />
             <Bosses bosses={cfg.bosses} onChange={reload} />
             <TipWars wars={cfg.wars} onChange={reload} />
@@ -231,6 +249,8 @@ const WIDGET_DEFAULT_POS: Record<string, string> = {
   boss: "top-left",
   tipwar: "bottom-right",
   spotlight: "top-right",
+  prediction: "center",
+  oracle: "center-right",
 };
 const POSITIONS = [
   "top-left", "top-center", "top-right",
@@ -412,6 +432,165 @@ function TipWars({ wars, onChange }: { wars: Config["wars"]; onChange: () => voi
           Add war
         </button>
       </div>
+    </Section>
+  );
+}
+
+function Predictions({ predictions, onChange }: { predictions: Config["predictions"]; onChange: () => void }) {
+  const active = predictions.find((p) => p.status === "open" || p.status === "locked");
+  const shown = active ?? predictions.find((p) => p.status === "resolved");
+  return (
+    <Section
+      title="Prediction market — Call It 🔮"
+      hint="Open a prediction; viewers pick FREE in chat or back a side with Thanks (high-roller). Winners bank Oracle points. Overlay: /prediction."
+    >
+      {shown && <ActivePrediction pred={shown} onChange={onChange} />}
+      {!active && <NewPrediction onChange={onChange} />}
+    </Section>
+  );
+}
+
+function NewPrediction({ onChange }: { onChange: () => void }) {
+  const [title, setTitle] = useState("");
+  const [opts, setOpts] = useState<{ label: string; keyword: string }[]>([
+    { label: "Yes", keyword: "yes" },
+    { label: "No", keyword: "no" },
+  ]);
+  const set = (i: number, k: "label" | "keyword", v: string) =>
+    setOpts((prev) => prev.map((o, j) => (j === i ? { ...o, [k]: v } : o)));
+  return (
+    <div className={`${card} space-y-2`}>
+      <input placeholder="Prediction question (e.g. Do I clutch this round?)" value={title} onChange={(e) => setTitle(e.target.value)} className={`${input} w-full`} />
+      {opts.map((o, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <input placeholder="Outcome label" value={o.label} onChange={(e) => set(i, "label", e.target.value)} className={`${input} flex-1`} />
+          <input placeholder="chat/Thanks keyword" value={o.keyword} onChange={(e) => set(i, "keyword", e.target.value)} className={`${input} w-40`} />
+          {opts.length > 2 && (
+            <button className={btnGhost} onClick={() => setOpts((prev) => prev.filter((_, j) => j !== i))}>✕</button>
+          )}
+        </div>
+      ))}
+      <div className="flex gap-2">
+        {opts.length < 4 && (
+          <button className={btnGhost} onClick={() => setOpts((prev) => [...prev, { label: "", keyword: "" }])}>
+            + Outcome
+          </button>
+        )}
+        <button
+          className={btn}
+          onClick={async () => {
+            const options = opts
+              .map((o) => ({ label: o.label.trim(), keyword: o.keyword.trim() }))
+              .filter((o) => o.label && o.keyword);
+            if (!title.trim() || options.length < 2) return;
+            const res = await j("POST", "/api/predictions", { title: title.trim(), options });
+            if (res.ok) { setTitle(""); onChange(); }
+            else alert((await res.json().catch(() => ({}))).error ?? "Could not open prediction");
+          }}
+        >
+          Open prediction
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ActivePrediction({
+  pred,
+  onChange,
+}: {
+  pred: Config["predictions"][number];
+  onChange: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const badge =
+    pred.status === "open" ? "🟢 OPEN" : pred.status === "locked" ? "🔒 LOCKED" : "✅ RESOLVED";
+  const simulate = async (keyword: string) => {
+    setBusy(true);
+    for (let i = 0; i < 5; i++) {
+      await j("POST", "/api/test-event", { kind: "chat", message: keyword, actorName: `viewer_${Math.random().toString(36).slice(2, 6)}` });
+    }
+    await j("POST", "/api/test-event", { kind: "thanks", amount: 25, message: keyword, actorName: `whale_${Math.random().toString(36).slice(2, 5)}` });
+    setTimeout(() => { setBusy(false); onChange(); }, 600);
+  };
+  return (
+    <div className={`${card} space-y-3`}>
+      <div className="flex items-center justify-between">
+        <strong>{pred.title}</strong>
+        <span className="text-xs text-zinc-500">{badge}</span>
+      </div>
+      <div className="space-y-1.5">
+        {pred.options.map((o) => {
+          const won = pred.status === "resolved" && pred.winningOptionId === o.id;
+          return (
+            <div key={o.id} className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="w-32 font-semibold">{won && "🏆 "}{o.label}</span>
+              <span className="text-xs text-zinc-500">
+                “{o.keyword}” · {o.backers} picks{o.thanksTotal > 0 && ` · 💰 ${o.thanksTotal}`}
+              </span>
+              {pred.status === "open" && (
+                <button className={btnGhost} disabled={busy} onClick={() => simulate(o.keyword)}>
+                  Sim picks
+                </button>
+              )}
+              {pred.status !== "resolved" && (
+                <button
+                  className={btn}
+                  onClick={async () => { await j("PATCH", `/api/predictions/${pred.id}`, { action: "resolve", winningOptionId: o.id }); onChange(); }}
+                >
+                  🏆 Winner
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-2">
+        {pred.status === "open" && (
+          <button className={btnGhost} onClick={async () => { await j("PATCH", `/api/predictions/${pred.id}`, { action: "lock" }); onChange(); }}>
+            Lock picks
+          </button>
+        )}
+        <button className={btnGhost} onClick={async () => { await j("DELETE", `/api/predictions/${pred.id}`); onChange(); }}>
+          {pred.status === "resolved" ? "Clear" : "Cancel"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function OracleBoard({ oracle, onChange }: { oracle: Config["oracle"]; onChange: () => void }) {
+  return (
+    <Section title="Oracle leaderboard 🔮" hint="Sharpest predictors by points earned. Overlay: /oracle.">
+      {oracle.length === 0 ? (
+        <p className="text-sm text-zinc-500">No predictions resolved yet — open one above.</p>
+      ) : (
+        <>
+          <div className={`${card} space-y-1`}>
+            {oracle.map((o, i) => (
+              <div key={o.id} className="flex items-center justify-between py-0.5 text-sm">
+                <span>
+                  {i + 1}. {o.actorName}{" "}
+                  {o.streak >= 2 && <span className="text-ignite">🔥{o.streak}</span>}
+                </span>
+                <span className="tabular-nums text-zinc-400">
+                  {o.points} pts · {o.wins}W/{o.losses}L
+                </span>
+              </div>
+            ))}
+          </div>
+          <button
+            className={btnGhost}
+            onClick={async () => {
+              if (!window.confirm("Reset the Oracle leaderboard for a new season?")) return;
+              await j("DELETE", "/api/oracle");
+              onChange();
+            }}
+          >
+            Reset season
+          </button>
+        </>
+      )}
     </Section>
   );
 }

@@ -10,10 +10,11 @@ export async function POST(req: NextRequest) {
   if (!channelId) return NextResponse.json({ error: "not_connected" }, { status: 401 });
 
   const body = (await req.json().catch(() => ({}))) as {
-    kind?: "thanks" | "follow" | "subscription";
+    kind?: "thanks" | "follow" | "subscription" | "gift" | "chat" | "vote";
     amount?: number;
     actorName?: string;
     message?: string;
+    address?: string;
     preview?: boolean;
   };
   try {

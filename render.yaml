@@ -10,11 +10,14 @@ services:
     runtime: node
     plan: free
     # --include=dev so TypeScript/@types build even with NODE_ENV=production set.
+    # db:deploy applies any pending Prisma migrations (DATABASE_URL is set as a
+    # Render env var, so it's available at build time) before the bridge starts.
     buildCommand: >-
       npm ci --include=dev &&
       npm run build --workspace packages/shared &&
       npm run build --workspace packages/db &&
-      npm run build --workspace apps/bridge
+      npm run build --workspace apps/bridge &&
+      npm run db:deploy --workspace packages/db
     startCommand: node apps/bridge/dist/main.js
     healthCheckPath: /health
     envVars:

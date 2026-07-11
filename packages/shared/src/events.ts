@@ -19,6 +19,7 @@ export const NormalizedEventKind = z.enum([
   "subscription", // channel.subscribe
   "gift", // channel.subscription.gift — gifter + giftCount
   "follow", // channel.follow
+  "chat", // channel.chat.message — used for free prediction picks (not persisted)
   "stream.online",
   "stream.offline",
 ]);
@@ -94,6 +95,22 @@ export const FollowEvent = z.object({
 });
 export type FollowEvent = z.infer<typeof FollowEvent>;
 
+/**
+ * channel.chat.message — a chat line. We only use these to let viewers cast a
+ * FREE prediction pick (a keyword in the message). Chat is high-volume, so these
+ * are never persisted; the bridge drops them unless a prediction is open.
+ */
+export const ChatEvent = z.object({
+  ...eventBase,
+  kind: z.literal("chat"),
+  actor: Actor,
+  message: z.string(),
+  isSubscriber: z.boolean().optional(),
+  isFollower: z.boolean().optional(),
+  isOwner: z.boolean().optional(),
+});
+export type ChatEvent = z.infer<typeof ChatEvent>;
+
 export const StreamLifecycleEvent = z.object({
   ...eventBase,
   kind: z.enum(["stream.online", "stream.offline"]),
@@ -106,6 +123,7 @@ export const NormalizedEvent = z.discriminatedUnion("kind", [
   SubscriptionEvent,
   GiftEvent,
   FollowEvent,
+  ChatEvent,
   StreamLifecycleEvent,
 ]);
 export type NormalizedEvent = z.infer<typeof NormalizedEvent>;

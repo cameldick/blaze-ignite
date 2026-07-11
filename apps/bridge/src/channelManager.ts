@@ -8,6 +8,8 @@ import {
   loadSnapshot,
   loadSpotlight,
   persistEvent,
+  recordPredictionPick,
+  hasOpenPrediction,
 } from "./store.js";
 import { log } from "./log.js";
 
@@ -22,6 +24,9 @@ export class ChannelManager {
   private rulesCache = new Map<string, ActionRule[]>();
   private active = new Set<string>();
   private refreshTimers = new Map<string, NodeJS.Timeout>();
+  /** Channels with a prediction open for picks — a cheap gate so high-volume
+   *  chat is dropped instantly unless a prediction is actually running. */
+  private predictionOpen = new Set<string>();
 
   constructor(
     private readonly adapter: EventAdapter,
@@ -46,6 +51,7 @@ export class ChannelManager {
     if (!channel) return;
     this.active.add(channelId);
     this.rulesCache.set(channelId, await loadRules(channelId));
+    await this.refreshPredictionGate(channelId);
     await this.adapter.start({
       channelId: channel.channelId,
       blazeChannelId: channel.blazeChannelId,
@@ -107,8 +113,19 @@ export class ChannelManager {
 
   /** Re-broadcast a fresh state snapshot so overlays reflect config changes live. */
   async refreshOverlays(channelId: string): Promise<void> {
+    await this.refreshPredictionGate(channelId);
     const snapshot = await loadSnapshot(channelId);
     this.overlay.broadcast(channelId, { type: "state", ...snapshot });
+  }
+
+  /** Update the cheap chat gate: does this channel have a prediction open? */
+  private async refreshPredictionGate(channelId: string): Promise<void> {
+    try {
+      if (await hasOpenPrediction(channelId)) this.predictionOpen.add(channelId);
+      else this.predictionOpen.delete(channelId);
+    } catch (err) {
+      log.warn("prediction gate refresh failed", { channelId, err: String(err) });
+    }
   }
 
   /**
@@ -160,6 +177,12 @@ export class ChannelManager {
 
   private async handleEvent(event: NormalizedEvent): Promise<void> {
     try {
+      // Chat is high-volume and only used for free prediction picks — never
+      // persisted (the per-viewer entry unique key handles double-picks).
+      if (event.kind === "chat") {
+        await this.dispatch(event);
+        return;
+      }
       const { isNew } = await persistEvent(event);
       log.info("event received", {
         kind: event.kind,
@@ -188,6 +211,13 @@ export class ChannelManager {
       });
       return;
     }
+    // channel.chat.message → a FREE prediction pick (if a prediction is open).
+    if (event.kind === "chat") {
+      if (preview || !this.predictionOpen.has(event.channelId)) return;
+      const state = await recordPredictionPick(event.channelId, event.actor, event.message, 0);
+      if (state) this.overlay.broadcast(event.channelId, state);
+      return;
+    }
     // Load rules (cached) for the channel.
     if (
       event.kind !== "thanks" &&
@@ -207,6 +237,12 @@ export class ChannelManager {
         ? await applyThanks(event, rules, preview)
         : applyEventAlerts(event, rules); // follow / subscription / gift → alert only
     for (const msg of messages) this.overlay.broadcast(event.channelId, msg);
+
+    // A Thanks whose message names an option = a high-roller prediction stake.
+    if (event.kind === "thanks" && !preview && this.predictionOpen.has(event.channelId)) {
+      const state = await recordPredictionPick(event.channelId, event.actor, event.message, event.amount);
+      if (state) this.overlay.broadcast(event.channelId, state);
+    }
   }
 
   status(channelId: string) {

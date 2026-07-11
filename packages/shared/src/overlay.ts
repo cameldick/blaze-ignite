@@ -78,6 +78,40 @@ export const SpotlightStateMsg = z.object({
     .optional(),
 });
 
+/**
+ * "Call It" prediction. Viewers pick an outcome free via chat or back it with
+ * Thanks (high-roller weight). `pct` is each option's share of the combined
+ * weight (backers + staked Thanks). On resolve, `winners` names the top correct
+ * backers for the on-screen celebration.
+ */
+export const PredictionStateMsg = z.object({
+  type: z.literal("prediction"),
+  id: z.string(),
+  title: z.string(),
+  status: z.enum(["open", "locked", "resolved"]),
+  options: z.array(
+    z.object({
+      id: z.string(),
+      label: z.string(),
+      backers: z.number(),
+      thanksTotal: z.number(),
+      pct: z.number(),
+    }),
+  ),
+  winningOptionId: z.string().optional(),
+  winners: z.array(z.object({ name: z.string(), stakeThanks: z.number() })).optional(),
+});
+
+/** The "Oracle" leaderboard — best predictors on the channel (points + streak). */
+export const OracleStateMsg = z.object({
+  type: z.literal("oracle"),
+  leaders: z.array(
+    z.object({ name: z.string(), points: z.number(), streak: z.number(), wins: z.number() }),
+  ),
+  /** The result that just landed, for a celebratory pop. */
+  lastResult: z.object({ name: z.string(), points: z.number(), correct: z.boolean() }).optional(),
+});
+
 /** Full snapshot replayed on overlay (re)connect. */
 export const StateSnapshotMsg = z.object({
   type: z.literal("state"),
@@ -85,6 +119,8 @@ export const StateSnapshotMsg = z.object({
   wars: z.array(TipWarStateMsg),
   bosses: z.array(BossStateMsg),
   spotlight: SpotlightStateMsg.optional(),
+  prediction: PredictionStateMsg.optional(),
+  oracle: OracleStateMsg.optional(),
 });
 
 export const OverlayMessage = z.discriminatedUnion("type", [
@@ -93,6 +129,8 @@ export const OverlayMessage = z.discriminatedUnion("type", [
   TipWarStateMsg,
   BossStateMsg,
   SpotlightStateMsg,
+  PredictionStateMsg,
+  OracleStateMsg,
   StateSnapshotMsg,
 ]);
 export type OverlayMessage = z.infer<typeof OverlayMessage>;

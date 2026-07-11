@@ -35,6 +35,7 @@ export const SUBSCRIBED_EVENT_TYPES = [
   "channel.subscribe",
   "channel.subscription.gift",
   "channel.follow",
+  "channel.chat.message",
   "stream.online",
   "stream.offline",
 ] as const;

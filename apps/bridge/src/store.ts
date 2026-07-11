@@ -2,10 +2,14 @@ import { prisma, Prisma } from "@blaze-ignite/db";
 import {
   ActionRule,
   type NormalizedEvent,
+  type Actor,
   type GoalStateMsg,
   type TipWarStateMsg,
   type BossStateMsg,
   type SpotlightStateMsg,
+  type PredictionStateMsg,
+  type OracleStateMsg,
+  predictionPct,
 } from "@blaze-ignite/shared";
 import { z } from "zod";
 import { config } from "./config.js";
@@ -17,6 +21,8 @@ type Goal = z.infer<typeof GoalStateMsg>;
 type War = z.infer<typeof TipWarStateMsg>;
 type Boss = z.infer<typeof BossStateMsg>;
 type Spotlight = z.infer<typeof SpotlightStateMsg>;
+type Prediction = z.infer<typeof PredictionStateMsg>;
+type Oracle = z.infer<typeof OracleStateMsg>;
 
 export interface LoadedChannel {
   channelId: string; // internal
@@ -227,18 +233,146 @@ export async function loadSpotlight(channelId: string): Promise<Spotlight> {
   return { type: "spotlight", epochTotal, topVoters };
 }
 
+// ── "Call It" Prediction Market ────────────────────────────────────────────
+
+/** Build the overlay message for a prediction from its option rows. */
+function buildPredictionMsg(
+  pred: { id: string; title: string; status: string; winningOptionId: string | null },
+  options: { id: string; label: string; backers: number; thanksTotal: number }[],
+  winners?: { name: string; stakeThanks: number }[],
+): Prediction {
+  // Weight = participants + staked Thanks, so high-rollers move the odds.
+  const pct = predictionPct(options);
+  return {
+    type: "prediction",
+    id: pred.id,
+    title: pred.title,
+    status: (["open", "locked", "resolved"].includes(pred.status) ? pred.status : "open") as
+      | "open"
+      | "locked"
+      | "resolved",
+    options: options.map((o, i) => ({
+      id: o.id,
+      label: o.label,
+      backers: o.backers,
+      thanksTotal: o.thanksTotal,
+      pct: pct[i]!,
+    })),
+    winningOptionId: pred.winningOptionId ?? undefined,
+    winners,
+  };
+}
+
+/** Top correct backers of a resolved prediction (for the on-screen reveal). */
+async function topWinners(
+  predictionId: string,
+  winningOptionId: string | null,
+): Promise<{ name: string; stakeThanks: number }[]> {
+  if (!winningOptionId) return [];
+  const entries = await prisma.predictionEntry.findMany({
+    where: { predictionId, optionId: winningOptionId },
+    orderBy: [{ stakeThanks: "desc" }, { createdAt: "asc" }],
+    take: 8,
+  });
+  return entries.map((e) => ({ name: e.actorName, stakeThanks: e.stakeThanks }));
+}
+
+/** The channel's current prediction (most recent), as an overlay message. */
+export async function loadPredictionState(channelId: string): Promise<Prediction | null> {
+  const pred = await prisma.prediction.findFirst({
+    where: { channelId },
+    orderBy: { createdAt: "desc" },
+    include: { options: { orderBy: { id: "asc" } } },
+  });
+  if (!pred) return null;
+  const winners = pred.status === "resolved" ? await topWinners(pred.id, pred.winningOptionId) : undefined;
+  return buildPredictionMsg(pred, pred.options, winners);
+}
+
+/** Is a prediction currently open for picks? (cheap gate for chat volume) */
+export async function hasOpenPrediction(channelId: string): Promise<boolean> {
+  const n = await prisma.prediction.count({ where: { channelId, status: "open" } });
+  return n > 0;
+}
+
+/**
+ * Record a viewer's pick on the open prediction. Free picks come from chat
+ * (stakeThanks=0); Thanks-backed picks add high-roller weight. The first pick
+ * locks a viewer's side; later Thanks on the same side raise their stake, other
+ * sides are ignored. Returns the updated state, or null if nothing changed.
+ */
+export async function recordPredictionPick(
+  channelId: string,
+  actor: Actor,
+  message: string | undefined,
+  stakeThanks: number,
+): Promise<Prediction | null> {
+  const pred = await prisma.prediction.findFirst({
+    where: { channelId, status: "open" },
+    orderBy: { createdAt: "desc" },
+    include: { options: true },
+  });
+  if (!pred) return null;
+  const text = (message ?? "").toLowerCase();
+  const opt = pred.options.find((o) => o.keyword && text.includes(o.keyword.toLowerCase()));
+  if (!opt) return null;
+
+  const name = actor.displayName ?? actor.username;
+  const existing = await prisma.predictionEntry.findUnique({
+    where: { predictionId_actorId: { predictionId: pred.id, actorId: actor.id } },
+  });
+  if (!existing) {
+    await prisma.predictionEntry.create({
+      data: { predictionId: pred.id, optionId: opt.id, actorId: actor.id, actorName: name, stakeThanks },
+    });
+    await prisma.predictionOption.update({
+      where: { id: opt.id },
+      data: { backers: { increment: 1 }, ...(stakeThanks > 0 && { thanksTotal: { increment: stakeThanks } }) },
+    });
+  } else if (existing.optionId === opt.id && stakeThanks > 0) {
+    await prisma.predictionEntry.update({
+      where: { id: existing.id },
+      data: { stakeThanks: { increment: stakeThanks } },
+    });
+    await prisma.predictionOption.update({
+      where: { id: opt.id },
+      data: { thanksTotal: { increment: stakeThanks } },
+    });
+  } else {
+    return null; // side already locked to a different option, or free re-pick
+  }
+  return loadPredictionState(channelId);
+}
+
+/** The Oracle leaderboard — top predictors on the channel. */
+export async function loadOracle(channelId: string): Promise<Oracle> {
+  const rows = await prisma.oracle.findMany({
+    where: { channelId },
+    orderBy: [{ points: "desc" }, { bestStreak: "desc" }],
+    take: 10,
+  });
+  return {
+    type: "oracle",
+    leaders: rows.map((r) => ({ name: r.actorName, points: r.points, streak: r.streak, wins: r.wins })),
+  };
+}
+
 /** Full overlay state snapshot for replay on (re)connect. */
 export async function loadSnapshot(channelId: string): Promise<{
   goals: Goal[];
   wars: War[];
   bosses: Boss[];
   spotlight: Spotlight;
+  prediction?: Prediction;
+  oracle: Oracle;
 }> {
-  const [goals, wars, bosses, spotlight] = await Promise.all([
+  const [goals, wars, bosses, spotlight, prediction, oracle] = await Promise.all([
     prisma.goal.findMany({ where: { channelId, active: true } }),
     prisma.tipWar.findMany({ where: { channelId, active: true }, include: { options: true } }),
     prisma.boss.findMany({ where: { channelId, active: true } }),
     loadSpotlight(channelId),
+    loadPredictionState(channelId),
+    loadOracle(channelId),
   ]);
   return {
     goals: goals.map((g) => ({
@@ -263,5 +397,7 @@ export async function loadSnapshot(channelId: string): Promise<{
       defeated: b.defeated,
     })),
     spotlight,
+    prediction: prediction ?? undefined,
+    oracle,
   };
 }

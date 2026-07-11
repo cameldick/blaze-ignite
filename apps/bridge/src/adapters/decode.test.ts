@@ -29,6 +29,28 @@ describe("decodeBlazeEvent", () => {
     }
   });
 
+  it("decodes channel.chat.message (used for free prediction picks)", () => {
+    const raw = {
+      metadata: { subscriptionType: "channel.chat.message" },
+      payload: {
+        channelId: "blaze-uuid",
+        sender: { id: "u9", username: "sam", displayName: "Sam", isSubscriber: true },
+        messageId: "m-1",
+        message: "!yes for sure",
+        createdAt: "2026-05-04T12:00:00.000Z",
+      },
+    };
+    const e = decodeBlazeEvent(raw, CH);
+    expect(e).not.toBeNull();
+    expect(e!.kind).toBe("chat");
+    expect(e!.sourceEventId).toBe("m-1");
+    if (e!.kind === "chat") {
+      expect(e!.message).toBe("!yes for sure");
+      expect(e!.actor.username).toBe("sam");
+      expect(e!.isSubscriber).toBe(true);
+    }
+  });
+
   it("decodes channel.vote with the voter wallet address", () => {
     const raw = {
       metadata: { subscriptionType: "channel.vote" },

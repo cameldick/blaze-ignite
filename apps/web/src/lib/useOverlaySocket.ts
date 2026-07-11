@@ -9,6 +9,8 @@ import type {
   BossStateMsg,
   ThanksAlertMsg,
   SpotlightStateMsg,
+  PredictionStateMsg,
+  OracleStateMsg,
 } from "@blaze-ignite/shared";
 import { z } from "zod";
 
@@ -17,6 +19,8 @@ type Goal = z.infer<typeof GoalStateMsg>;
 type War = z.infer<typeof TipWarStateMsg>;
 type Boss = z.infer<typeof BossStateMsg>;
 type Spotlight = z.infer<typeof SpotlightStateMsg>;
+type Prediction = z.infer<typeof PredictionStateMsg>;
+type Oracle = z.infer<typeof OracleStateMsg>;
 
 export interface OverlayState {
   connected: boolean;
@@ -26,6 +30,8 @@ export interface OverlayState {
   wars: Map<string, War>;
   bosses: Map<string, Boss>;
   spotlight: Spotlight | null;
+  prediction: Prediction | null;
+  oracle: Oracle | null;
   /** Remove a consumed alert by its synthetic id. */
   dismissAlert: (id: number) => void;
 }
@@ -43,6 +49,8 @@ export function useOverlaySocket(bridgeUrl: string, overlayToken: string): Overl
   const [wars, setWars] = useState<Map<string, War>>(new Map());
   const [bosses, setBosses] = useState<Map<string, Boss>>(new Map());
   const [spotlight, setSpotlight] = useState<Spotlight | null>(null);
+  const [prediction, setPrediction] = useState<Prediction | null>(null);
+  const [oracle, setOracle] = useState<Oracle | null>(null);
   const alertSeq = useRef(0);
   const socketRef = useRef<Socket | null>(null);
 
@@ -64,6 +72,8 @@ export function useOverlaySocket(bridgeUrl: string, overlayToken: string): Overl
           setWars(new Map(msg.wars.map((w) => [w.warId, w])));
           setBosses(new Map(msg.bosses.map((b) => [b.bossId, b])));
           if (msg.spotlight) setSpotlight(msg.spotlight);
+          setPrediction(msg.prediction ?? null);
+          if (msg.oracle) setOracle(msg.oracle);
           break;
         case "alert":
           setAlerts((prev) => [...prev, { ...msg, _id: alertSeq.current++ }]);
@@ -80,6 +90,12 @@ export function useOverlaySocket(bridgeUrl: string, overlayToken: string): Overl
         case "spotlight":
           setSpotlight(msg);
           break;
+        case "prediction":
+          setPrediction(msg);
+          break;
+        case "oracle":
+          setOracle(msg);
+          break;
       }
     });
 
@@ -91,7 +107,7 @@ export function useOverlaySocket(bridgeUrl: string, overlayToken: string): Overl
 
   const dismissAlert = (id: number) => setAlerts((prev) => prev.filter((a) => a._id !== id));
 
-  return { connected, alerts, goals, wars, bosses, spotlight, dismissAlert };
+  return { connected, alerts, goals, wars, bosses, spotlight, prediction, oracle, dismissAlert };
 }
 
 // Re-export the pure display helpers so existing imports keep working.

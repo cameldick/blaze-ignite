@@ -48,6 +48,10 @@ function mapKind(rawType: string | undefined): NormalizedEvent["kind"] | undefin
     case "channel.follow":
     case "follow":
       return "follow";
+    case "channel.chat.message":
+    case "chat.message":
+    case "chat":
+      return "chat";
     case "stream.online":
       return "stream.online";
     case "stream.offline":
@@ -122,6 +126,18 @@ export function decodeBlazeEvent(raw: Raw, channelId: string): NormalizedEvent |
         });
       case "follow":
         return NormalizedEvent.parse({ ...base, kind: "follow", actor: actorFrom(p) });
+      case "chat": {
+        const u = (p.sender ?? p.user ?? {}) as Raw;
+        return NormalizedEvent.parse({
+          ...base,
+          kind: "chat",
+          actor: actorFrom(p),
+          message: str(p.message) ?? "",
+          isSubscriber: typeof u.isSubscriber === "boolean" ? u.isSubscriber : undefined,
+          isFollower: typeof u.isFollower === "boolean" ? u.isFollower : undefined,
+          isOwner: typeof u.isOwner === "boolean" ? u.isOwner : undefined,
+        });
+      }
       default:
         return NormalizedEvent.parse({ ...base, kind });
     }

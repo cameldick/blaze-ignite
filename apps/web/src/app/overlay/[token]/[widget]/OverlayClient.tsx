@@ -7,10 +7,12 @@ import { GoalWidget } from "@/components/overlay/GoalWidget";
 import { BossWidget } from "@/components/overlay/BossWidget";
 import { TipWarWidget } from "@/components/overlay/TipWarWidget";
 import { SpotlightWidget } from "@/components/overlay/SpotlightWidget";
+import { PredictionWidget } from "@/components/overlay/PredictionWidget";
+import { OracleWidget } from "@/components/overlay/OracleWidget";
 
 const BRIDGE_URL = process.env.NEXT_PUBLIC_BRIDGE_URL ?? "http://localhost:4000";
 
-const WIDGETS = ["alert", "goal", "boss", "tipwar", "spotlight"] as const;
+const WIDGETS = ["alert", "goal", "boss", "tipwar", "spotlight", "prediction", "oracle"] as const;
 type Widget = (typeof WIDGETS)[number];
 
 export function OverlayClient({ token, widget }: { token: string; widget: string }) {
@@ -37,5 +39,9 @@ export function OverlayClient({ token, widget }: { token: string; widget: string
       return <TipWarWidget state={state} pos={pos} />;
     case "spotlight":
       return <SpotlightWidget state={state} pos={pos} />;
+    case "prediction":
+      return <PredictionWidget state={state} pos={pos} />;
+    case "oracle":
+      return <OracleWidget state={state} pos={pos} />;
   }
 }

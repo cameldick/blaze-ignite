@@ -8,10 +8,12 @@ import { log } from "./log.js";
 
 /** Body for the dashboard "Test Event" / per-alert Preview buttons. */
 const TestBody = z.object({
-  kind: z.enum(["thanks", "follow", "subscription", "gift"]).default("thanks"),
+  kind: z.enum(["thanks", "follow", "subscription", "gift", "chat", "vote"]).default("thanks"),
   amount: z.number().positive().default(50),
   actorName: z.string().default("Supporter"),
   message: z.string().optional(),
+  /** Voter wallet for `vote` test events. */
+  address: z.string().optional(),
   /** Preview mode: fire alerts only, don't mutate goal/boss/war state. */
   preview: z.boolean().default(false),
 });
@@ -85,12 +87,13 @@ export function createControlApp(manager: ChannelManager): Express {
   app.post("/channels/:id/test", async (req, res) => {
     const parsed = TestBody.safeParse(req.body ?? {});
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    const { kind, amount, actorName, message, preview } = parsed.data;
+    const { kind, amount, actorName, message, address, preview } = parsed.data;
+    // Fresh actor id per call so simulated picks count as distinct viewers.
     const common = {
       sourceEventId: `test-${randomUUID()}`,
       channelId: req.params.id,
       occurredAt: new Date().toISOString(),
-      actor: { id: "test", username: actorName, displayName: actorName },
+      actor: { id: `test-${randomUUID()}`, username: actorName, displayName: actorName, address },
     };
     const event: NormalizedEvent =
       kind === "thanks"
@@ -99,9 +102,16 @@ export function createControlApp(manager: ChannelManager): Express {
           ? { ...common, kind: "gift", amount }
           : kind === "subscription"
             ? { ...common, kind: "subscription" }
-            : { ...common, kind: "follow" };
-    // Always preview for non-thanks (they only alert); honor the flag for thanks.
-    await manager.injectTest(event, kind === "thanks" ? preview : true);
+            : kind === "chat"
+              ? { ...common, kind: "chat", message: message ?? "" }
+              : kind === "vote"
+                ? { ...common, kind: "vote", amount }
+                : { ...common, kind: "follow" };
+    // Honor preview for thanks; chat/vote must actually run (they mutate state);
+    // follow/sub/gift only alert, so preview-mode them.
+    const doPreview =
+      kind === "thanks" ? preview : kind === "chat" || kind === "vote" ? false : true;
+    await manager.injectTest(event, doPreview);
     res.json({ ok: true });
   });
 

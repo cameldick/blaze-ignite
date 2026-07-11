@@ -61,14 +61,15 @@ export async function getChannelStatus(channelId: string): Promise<unknown> {
   }
 }
 
-/** Fire a simulated Thanks for the dashboard "Test Event" button. */
+/** Fire a simulated event for the dashboard "Test Event" / prediction sims. */
 export async function sendTestEvent(
   channelId: string,
   body: {
-    kind?: "thanks" | "follow" | "subscription";
+    kind?: "thanks" | "follow" | "subscription" | "gift" | "chat" | "vote";
     amount?: number;
     actorName?: string;
     message?: string;
+    address?: string;
     preview?: boolean;
   },
 ): Promise<void> {

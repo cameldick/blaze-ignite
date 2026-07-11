@@ -48,6 +48,12 @@ channel and drop the overlay URLs into OBS.
 - **Backstage Spotlight** — a live, on-stream leaderboard of Backstage votes for
   the current epoch, showing voter wallets — surfacing on-chain governance that
   Blaze otherwise only shows on its website.
+- **Prediction market — "Call It"** — the streamer opens a Yes/No (or multi)
+  prediction; viewers pick **free via chat** (`channel.chat.message`) or **back a
+  side with Thanks** (high-roller weight). Live odds, lock, and a resolve that
+  celebrates the winners on screen. No real-money payout — winners bank glory.
+- **Oracle leaderboard** — a persistent ranking of the channel's sharpest
+  predictors by points earned + win streaks. The sticky meta layer.
 
 **Creator dashboard**
 - One-click **Blaze OAuth** connect.
@@ -217,7 +223,7 @@ Each overlay is a full-screen, transparent **Browser Source**:
 ```
 /overlay/<overlayToken>/<widget>?pos=<position>
 ```
-- `widget`: `alert` · `goal` · `boss` · `tipwar` · `spotlight`
+- `widget`: `alert` · `goal` · `boss` · `tipwar` · `spotlight` · `prediction` · `oracle`
 - `pos` (optional): `top-left` · `top-center` · `top-right` · `center-left` ·
   `center` · `center-right` · `bottom-left` · `bottom-center` · `bottom-right`
 
@@ -234,7 +240,8 @@ button and a position dropdown.
 - **REST auth:** every request needs **both** an `Authorization: Bearer` token
   **and** a `client-id` header.
 - **Events used:** `channel.thanks`, `channel.vote`, `channel.subscribe`,
-  `channel.subscription.gift`, `channel.follow`, `stream.online/offline`.
+  `channel.subscription.gift`, `channel.follow`, `channel.chat.message`
+  (free prediction picks — never persisted), `stream.online/offline`.
 - **Amounts are unitless:** Blaze money events carry no currency or tx hash, so
   amounts are treated as `$BLAZE` and shown with a live USD estimate.
 - **No price endpoint:** the Blaze API exposes no token price, so `$BLAZE → USD`
