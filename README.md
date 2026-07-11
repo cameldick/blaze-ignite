@@ -116,17 +116,20 @@ This is an npm-workspaces monorepo.
 ### `packages/shared` — domain model & contracts
 The dependency-free core shared by both apps.
 - `events.ts` — the **normalized event model** (`thanks`, `vote`, `subscription`,
-  `gift`, `follow`, stream lifecycle) with Zod schemas. Everything downstream
-  depends only on these shapes, not on Blaze's raw payloads.
+  `gift`, `follow`, `chat`, stream lifecycle) with Zod schemas. Everything
+  downstream depends only on these shapes, not on Blaze's raw payloads.
 - `rules.ts` — the **rule model**: how a creator maps events to actions (alert /
   goal / tip-war / boss), including alert triggers and message templates.
+- `prediction.ts` — pure **"Call It" scoring** (Oracle points + odds weighting),
+  shared by the resolver and its tests.
 - `overlay.ts` — the **wire protocol** the bridge pushes to overlays.
 - `adapter.ts` — the **`EventAdapter` contract** (the single insulation seam).
 - `themes.ts` — overlay color palettes, shared so dashboard and overlay match.
 
 ### `packages/db` — persistence
 - `prisma/schema.prisma` — Postgres schema: users, channels (encrypted tokens),
-  action rules, the `Event` log (idempotency + analytics), goals, tip-wars, bosses.
+  action rules, the `Event` log (idempotency + analytics), goals, tip-wars, bosses,
+  predictions (+ options/entries) and the Oracle leaderboard.
 - `index.ts` — a shared Prisma client.
 
 ### `apps/bridge` — always-on event worker
@@ -149,7 +152,8 @@ The dependency-free core shared by both apps.
 - `app/api/auth/blaze/*` — the OAuth connect flow (PKCE).
 - `app/dashboard/*` — the creator dashboard (editors, analytics, diagnostics).
 - `app/overlay/[token]/[widget]/*` — the OBS overlay pages.
-- `app/api/*` — rule/goal/boss/tip-war CRUD, analytics, diagnostics, live price.
+- `app/api/*` — rule/goal/boss/tip-war/prediction CRUD, the Oracle leaderboard,
+  analytics, diagnostics, live price.
 - `components/overlay/*` — the overlay widgets.
 - `lib/*` — the Blaze client, crypto, session, bridge client, price hook, and the
   pure display helpers in `format.ts`.
