@@ -1,18 +1,21 @@
 import Link from "next/link";
 
 const FEATURES = [
-  { t: "Thanks Alerts", d: "Animated, tier-styled alerts on every Thanks — editable per event." },
-  { t: "Support Goals", d: "A progress bar that fills live as Thanks roll in toward your target." },
-  { t: "Tip Wars", d: "Viewers pick a side with a keyword in their Thanks; bars race in real time." },
-  { t: "Boss Battles", d: "Collective Thanks chip away a boss's meter to unlock a reward." },
+  { t: "Stream Market", d: "Chat goes LONG or SHORT a live momentum index that moves on real support." },
+  { t: "Prediction Market", d: "Call it: viewers stake Thanks or free chat picks on what happens next." },
+  { t: "Oracle Leaderboard", d: "The sharpest predictors, ranked by points earned and win streaks." },
   { t: "Backstage Spotlight", d: "A live, on-chain vote leaderboard for the current epoch." },
+  { t: "Boss Battles", d: "Collective Thanks chip away a boss's meter to unlock a reward." },
+  { t: "Tip Wars", d: "Viewers pick a side with a keyword in their Thanks; bars race in real time." },
+  { t: "Support Goals", d: "A progress bar that fills live as Thanks roll in toward your target." },
+  { t: "Thanks Alerts", d: "Animated, tier-styled alerts on every Thanks — editable per event, with sound." },
 ];
 
 const DIFFERENTIATORS = [
   "Driven by real Blaze events — Thanks and Backstage votes, not fake points.",
+  "A live prediction exchange + Stream Market no other overlay tool has.",
   "Backstage Spotlight puts on-chain, wallet-backed votes live on stream.",
   "Real-time Socket.IO event delivery, with an automatic polling fallback.",
-  "Tight, polished, production-ready — not a sprawling half-built suite.",
 ];
 
 function Check() {
@@ -78,11 +81,12 @@ export default function Home() {
         </h1>
 
         <p className="mt-6 max-w-2xl text-lg text-zinc-300">
-          Blaze Ignite turns every <strong className="text-white">Thanks</strong> into an instant
-          on-stream action — alerts, goals, tip-wars, and boss battles — and puts your on-chain{" "}
-          <strong className="text-white">Backstage votes</strong> live on screen with a Spotlight
-          leaderboard. No virtual coins. No AI gimmicks. Real Blaze events driving real moments, in
-          real time.
+          Blaze Ignite turns every <strong className="text-white">Thanks</strong>, vote and chat
+          message into live on-stream action — a <strong className="text-white">Stream Market</strong>{" "}
+          chat can trade long/short, a <strong className="text-white">prediction market</strong>,
+          boss battles, goals, and a Backstage <strong className="text-white">Spotlight</strong> that
+          puts on-chain votes on screen. No virtual coins. No AI gimmicks. Real Blaze events, in real
+          time.
         </p>
 
         <div className="mt-10 flex flex-wrap items-center gap-4">
