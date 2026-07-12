@@ -100,6 +100,14 @@ export function DashboardApp({
     void reload();
   }, [reload]);
 
+  const [tab, setTab] = useState<"games" | "interactions" | "alerts" | "overlays">("games");
+  const TABS = [
+    { id: "games", label: "Games", icon: "📈" },
+    { id: "interactions", label: "Interactions", icon: "⚔️" },
+    { id: "alerts", label: "Alerts", icon: "💥" },
+    { id: "overlays", label: "Overlays", icon: "🖥️" },
+  ] as const;
+
   return (
     <div className="relative min-h-screen">
       <div
@@ -148,24 +156,51 @@ export function DashboardApp({
         </header>
 
         <p className="mt-3 max-w-2xl text-sm text-zinc-500">
-          Configure how your Blaze events appear on stream, then add the overlay URLs below as
-          Browser Sources in OBS. Changes apply to your overlays instantly.
+          Configure how your Blaze events play on stream. Grab the overlay URLs from the bar below as
+          OBS Browser Sources — changes apply to your overlays instantly.
         </p>
 
-        <TestEvent />
-        <Overlays base={overlayBase} />
+        {/* sticky tab nav */}
+        <div className="sticky top-0 z-20 -mx-6 mt-6 border-b border-zinc-800 bg-zinc-950/85 px-6 py-2 backdrop-blur">
+          <div className="flex gap-1 overflow-x-auto">
+            {TABS.map((tb) => (
+              <button
+                key={tb.id}
+                onClick={() => setTab(tb.id)}
+                className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  tab === tb.id ? "bg-ignite text-black" : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <span className="mr-1.5" aria-hidden>{tb.icon}</span>
+                {tb.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {cfg && (
-          <>
-            <StreamMarket />
-            <Predictions predictions={cfg.predictions} onChange={reload} />
-            <OracleBoard oracle={cfg.oracle} onChange={reload} />
-            <Goals goals={cfg.goals} onChange={reload} />
-            <Bosses bosses={cfg.bosses} onChange={reload} />
-            <TipWars wars={cfg.wars} onChange={reload} />
-            <Alerts rules={cfg.rules} onChange={reload} />
-          </>
-        )}
+        {/* overlay quick-copy — present on top of every tab */}
+        <OverlayQuickBar base={overlayBase} />
+
+        <div className="mt-2">
+          {!cfg && <p className="mt-10 text-sm text-zinc-500">Loading…</p>}
+          {tab === "games" && cfg && (
+            <>
+              <TestEvent />
+              <StreamMarket />
+              <Predictions predictions={cfg.predictions} onChange={reload} />
+              <OracleBoard oracle={cfg.oracle} onChange={reload} />
+            </>
+          )}
+          {tab === "interactions" && cfg && (
+            <>
+              <Goals goals={cfg.goals} onChange={reload} />
+              <Bosses bosses={cfg.bosses} onChange={reload} />
+              <TipWars wars={cfg.wars} onChange={reload} />
+            </>
+          )}
+          {tab === "alerts" && cfg && <Alerts rules={cfg.rules} onChange={reload} />}
+          {tab === "overlays" && <Overlays base={overlayBase} />}
+        </div>
 
         <footer className="mt-16 flex items-center justify-between border-t border-zinc-800 pt-6 text-sm text-zinc-600">
           <span>🔥 Blaze Ignite</span>
@@ -191,6 +226,35 @@ function PoweredByBlaze({ className = "" }: { className?: string }) {
     >
       <span className="text-ignite">⚡</span> Powered by Blaze
     </a>
+  );
+}
+
+/** Compact, always-visible strip to copy any OBS overlay URL from any tab. */
+function OverlayQuickBar({ base }: { base: string }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  return (
+    <div className="mt-4 flex items-center gap-2 overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/40 px-3 py-2">
+      <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+        OBS overlays
+      </span>
+      {WIDGETS.map((w) => {
+        const url = `${base}/${w}?pos=${WIDGET_DEFAULT_POS[w] ?? "top-center"}`;
+        return (
+          <button
+            key={w}
+            title={url}
+            className="shrink-0 rounded-lg border border-zinc-700 px-2.5 py-1 text-xs transition hover:border-ignite/50 hover:text-white"
+            onClick={async () => {
+              const ok = await copyText(url);
+              setCopied(ok ? w : `${w}:fail`);
+              setTimeout(() => setCopied(null), 1200);
+            }}
+          >
+            {copied === w ? "copied ✓" : copied === `${w}:fail` ? "select+copy" : w}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
