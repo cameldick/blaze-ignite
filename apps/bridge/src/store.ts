@@ -10,6 +10,7 @@ import {
   type PredictionStateMsg,
   type OracleStateMsg,
   predictionPct,
+  oraclePoints,
 } from "@blaze-ignite/shared";
 import { z } from "zod";
 import { config } from "./config.js";
@@ -342,6 +343,36 @@ export async function recordPredictionPick(
     return null; // side already locked to a different option, or free re-pick
   }
   return loadPredictionState(channelId);
+}
+
+/**
+ * Score a batch of results into the Oracle leaderboard. Shared by prediction
+ * resolves and market settles: a correct call banks points (base + staked
+ * Thanks) and extends the streak; a wrong call resets the streak.
+ */
+export async function awardOracle(
+  channelId: string,
+  results: { actorId: string; actorName: string; correct: boolean; stakeThanks: number }[],
+): Promise<void> {
+  for (const r of results) {
+    const existing = await prisma.oracle.findUnique({
+      where: { channelId_actorId: { channelId, actorId: r.actorId } },
+    });
+    const streak = r.correct ? (existing?.streak ?? 0) + 1 : 0;
+    const data = {
+      actorName: r.actorName,
+      points: (existing?.points ?? 0) + oraclePoints(r.correct, r.stakeThanks),
+      wins: (existing?.wins ?? 0) + (r.correct ? 1 : 0),
+      losses: (existing?.losses ?? 0) + (r.correct ? 0 : 1),
+      streak,
+      bestStreak: Math.max(existing?.bestStreak ?? 0, streak),
+    };
+    await prisma.oracle.upsert({
+      where: { channelId_actorId: { channelId, actorId: r.actorId } },
+      create: { channelId, actorId: r.actorId, ...data },
+      update: data,
+    });
+  }
 }
 
 /** The Oracle leaderboard — top predictors on the channel. */

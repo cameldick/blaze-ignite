@@ -5,7 +5,7 @@ import Link from "next/link";
 import { THEMES } from "@blaze-ignite/shared";
 import { useBlazePrice, usdBracket, usdOnly } from "@/lib/useBlazePrice";
 
-const WIDGETS = ["alert", "goal", "boss", "tipwar", "spotlight", "prediction", "oracle"];
+const WIDGETS = ["alert", "goal", "boss", "tipwar", "spotlight", "prediction", "oracle", "market"];
 const ANIMATIONS = ["pop", "glow", "pulse", "slideIn"];
 
 type Config = {
@@ -157,6 +157,7 @@ export function DashboardApp({
 
         {cfg && (
           <>
+            <StreamMarket />
             <Predictions predictions={cfg.predictions} onChange={reload} />
             <OracleBoard oracle={cfg.oracle} onChange={reload} />
             <Goals goals={cfg.goals} onChange={reload} />
@@ -251,6 +252,7 @@ const WIDGET_DEFAULT_POS: Record<string, string> = {
   spotlight: "top-right",
   prediction: "center",
   oracle: "center-right",
+  market: "top-center",
 };
 const POSITIONS = [
   "top-left", "top-center", "top-right",
@@ -430,6 +432,52 @@ function TipWars({ wars, onChange }: { wars: Config["wars"]; onChange: () => voi
           }}
         >
           Add war
+        </button>
+      </div>
+    </Section>
+  );
+}
+
+function StreamMarket() {
+  const [dur, setDur] = useState(120);
+  const [busy, setBusy] = useState(false);
+  const sim = async (side: "long" | "short") => {
+    setBusy(true);
+    for (let i = 0; i < 6; i++) {
+      await j("POST", "/api/test-event", { kind: "chat", message: side, actorName: `trader_${Math.random().toString(36).slice(2, 6)}` });
+    }
+    await j("POST", "/api/test-event", { kind: "thanks", amount: 20, message: side, actorName: `whale_${Math.random().toString(36).slice(2, 5)}` });
+    setTimeout(() => setBusy(false), 400);
+  };
+  return (
+    <Section
+      title="Stream Market 📈"
+      hint="Trade the streamer. Open a round; viewers go !long / !short in chat or back a side with Thanks. The index rises on Thanks/votes/chat. Overlay: /market."
+    >
+      <div className={`${card} flex flex-wrap items-center gap-2`}>
+        <label className="text-sm text-zinc-400">Round length</label>
+        <select value={dur} onChange={(e) => setDur(Number(e.target.value))} className={input}>
+          <option value={60}>1 min</option>
+          <option value={120}>2 min</option>
+          <option value={180}>3 min</option>
+          <option value={300}>5 min</option>
+        </select>
+        <button className={btn} onClick={() => j("POST", "/api/markets", { action: "open", durationSec: dur })}>
+          Open round
+        </button>
+        <button className={btnGhost} onClick={() => j("POST", "/api/markets", { action: "settle" })}>
+          Settle now
+        </button>
+        <button className={btnGhost} onClick={() => j("POST", "/api/markets", { action: "cancel" })}>
+          Cancel
+        </button>
+      </div>
+      <div className={`${card} flex flex-wrap items-center gap-2`}>
+        <span className="text-xs text-zinc-500">Demo:</span>
+        <button className={btnGhost} disabled={busy} onClick={() => sim("long")}>Sim LONG buyers</button>
+        <button className={btnGhost} disabled={busy} onClick={() => sim("short")}>Sim SHORT sellers</button>
+        <button className={btnGhost} onClick={() => j("POST", "/api/test-event", { kind: "thanks", amount: 60, message: "gg" })}>
+          Pump index (Thanks)
         </button>
       </div>
     </Section>

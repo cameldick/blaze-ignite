@@ -4,3 +4,4 @@ export * from "./adapter.js";
 export * from "./overlay.js";
 export * from "./themes.js";
 export * from "./prediction.js";
+export * from "./market.js";

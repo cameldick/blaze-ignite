@@ -11,6 +11,7 @@ import type {
   SpotlightStateMsg,
   PredictionStateMsg,
   OracleStateMsg,
+  MarketTickMsg,
 } from "@blaze-ignite/shared";
 import { z } from "zod";
 
@@ -21,6 +22,7 @@ type Boss = z.infer<typeof BossStateMsg>;
 type Spotlight = z.infer<typeof SpotlightStateMsg>;
 type Prediction = z.infer<typeof PredictionStateMsg>;
 type Oracle = z.infer<typeof OracleStateMsg>;
+type Market = z.infer<typeof MarketTickMsg>;
 
 export interface OverlayState {
   connected: boolean;
@@ -32,6 +34,7 @@ export interface OverlayState {
   spotlight: Spotlight | null;
   prediction: Prediction | null;
   oracle: Oracle | null;
+  market: Market | null;
   /** Remove a consumed alert by its synthetic id. */
   dismissAlert: (id: number) => void;
 }
@@ -51,6 +54,7 @@ export function useOverlaySocket(bridgeUrl: string, overlayToken: string): Overl
   const [spotlight, setSpotlight] = useState<Spotlight | null>(null);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [oracle, setOracle] = useState<Oracle | null>(null);
+  const [market, setMarket] = useState<Market | null>(null);
   const alertSeq = useRef(0);
   const socketRef = useRef<Socket | null>(null);
 
@@ -96,6 +100,9 @@ export function useOverlaySocket(bridgeUrl: string, overlayToken: string): Overl
         case "oracle":
           setOracle(msg);
           break;
+        case "market":
+          setMarket(msg);
+          break;
       }
     });
 
@@ -107,7 +114,7 @@ export function useOverlaySocket(bridgeUrl: string, overlayToken: string): Overl
 
   const dismissAlert = (id: number) => setAlerts((prev) => prev.filter((a) => a._id !== id));
 
-  return { connected, alerts, goals, wars, bosses, spotlight, prediction, oracle, dismissAlert };
+  return { connected, alerts, goals, wars, bosses, spotlight, prediction, oracle, market, dismissAlert };
 }
 
 // Re-export the pure display helpers so existing imports keep working.

@@ -1,5 +1,7 @@
 import type { EventAdapter, NormalizedEvent, ActionRule } from "@blaze-ignite/shared";
+import { sideFromMessage } from "@blaze-ignite/shared";
 import type { OverlayHub } from "./overlayHub.js";
+import { MarketEngine } from "./marketEngine.js";
 import { applyThanks, applyEventAlerts } from "./ruleEngine.js";
 import {
   loadChannelIds,
@@ -27,15 +29,30 @@ export class ChannelManager {
   /** Channels with a prediction open for picks — a cheap gate so high-volume
    *  chat is dropped instantly unless a prediction is actually running. */
   private predictionOpen = new Set<string>();
+  /** Live "trade the streamer" momentum engine (in-memory, always-on ticker). */
+  private readonly market: MarketEngine;
 
   constructor(
     private readonly adapter: EventAdapter,
     private readonly overlay: OverlayHub,
   ) {
+    this.market = new MarketEngine(this.overlay);
+    this.market.start();
     this.adapter.onEvent((e) => void this.handleEvent(e));
     this.adapter.onStatus((s) =>
       log.info("adapter status", { ...s } as Record<string, unknown>),
     );
+  }
+
+  /** Stream Market controls (called from the web via the control server). */
+  openMarket(channelId: string, durationSec: number): void {
+    this.market.openRound(channelId, durationSec);
+  }
+  async settleMarket(channelId: string): Promise<void> {
+    await this.market.settle(channelId);
+  }
+  cancelMarket(channelId: string): void {
+    this.market.cancel(channelId);
   }
 
   /** Boot: subscribe every channel. */
@@ -200,6 +217,7 @@ export class ChannelManager {
   private async dispatch(event: NormalizedEvent, preview = false): Promise<void> {
     // channel.vote → refresh the always-on Backstage Spotlight overlay.
     if (event.kind === "vote") {
+      this.market.onVote(event.channelId, event.amount); // votes = bullish momentum
       const spotlight = await loadSpotlight(event.channelId);
       this.overlay.broadcast(event.channelId, {
         ...spotlight,
@@ -211,11 +229,16 @@ export class ChannelManager {
       });
       return;
     }
-    // channel.chat.message → a FREE prediction pick (if a prediction is open).
+    // channel.chat.message → momentum + a FREE market/prediction pick.
     if (event.kind === "chat") {
-      if (preview || !this.predictionOpen.has(event.channelId)) return;
-      const state = await recordPredictionPick(event.channelId, event.actor, event.message, 0);
-      if (state) this.overlay.broadcast(event.channelId, state);
+      if (preview) return;
+      const name = event.actor.displayName ?? event.actor.username;
+      this.market.onChat(event.channelId); // chat velocity = momentum
+      this.market.position(event.channelId, event.actor.id, name, sideFromMessage(event.message), 0);
+      if (this.predictionOpen.has(event.channelId)) {
+        const state = await recordPredictionPick(event.channelId, event.actor, event.message, 0);
+        if (state) this.overlay.broadcast(event.channelId, state);
+      }
       return;
     }
     // Load rules (cached) for the channel.
@@ -238,10 +261,16 @@ export class ChannelManager {
         : applyEventAlerts(event, rules); // follow / subscription / gift → alert only
     for (const msg of messages) this.overlay.broadcast(event.channelId, msg);
 
-    // A Thanks whose message names an option = a high-roller prediction stake.
-    if (event.kind === "thanks" && !preview && this.predictionOpen.has(event.channelId)) {
-      const state = await recordPredictionPick(event.channelId, event.actor, event.message, event.amount);
-      if (state) this.overlay.broadcast(event.channelId, state);
+    if (event.kind === "thanks" && !preview) {
+      const name = event.actor.displayName ?? event.actor.username;
+      // Thanks = strong bullish momentum, and a high-roller market position.
+      this.market.onThanks(event.channelId, event.amount);
+      this.market.position(event.channelId, event.actor.id, name, sideFromMessage(event.message), event.amount);
+      // A Thanks whose message names an option = a high-roller prediction stake.
+      if (this.predictionOpen.has(event.channelId)) {
+        const state = await recordPredictionPick(event.channelId, event.actor, event.message, event.amount);
+        if (state) this.overlay.broadcast(event.channelId, state);
+      }
     }
   }
 

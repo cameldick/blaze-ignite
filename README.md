@@ -54,6 +54,11 @@ channel and drop the overlay URLs into OBS.
   celebrates the winners on screen. No real-money payout — winners bank glory.
 - **Oracle leaderboard** — a persistent ranking of the channel's sharpest
   predictors by points earned + win streaks. The sticky meta layer.
+- **Stream Market — "trade the streamer"** — a live momentum **index** that rises
+  on real activity (Thanks, votes, chat) and decays when quiet, drawn as an
+  animated sparkline. Open a round and viewers go **LONG or SHORT** (free `!long`/
+  `!short` in chat, or a Thanks-backed high-roller position); at settle, LONG wins
+  if the index held/rose, SHORT if it fell — P&L flows into the same Oracle board.
 
 **Creator dashboard**
 - One-click **Blaze OAuth** connect.
@@ -122,6 +127,8 @@ The dependency-free core shared by both apps.
   goal / tip-war / boss), including alert triggers and message templates.
 - `prediction.ts` — pure **"Call It" scoring** (Oracle points + odds weighting),
   shared by the resolver and its tests.
+- `market.ts` — pure **Stream Market** helpers (momentum decay, LONG/SHORT
+  outcome + book split, keyword→side).
 - `overlay.ts` — the **wire protocol** the bridge pushes to overlays.
 - `adapter.ts` — the **`EventAdapter` contract** (the single insulation seam).
 - `themes.ts` — overlay color palettes, shared so dashboard and overlay match.
@@ -140,8 +147,10 @@ The dependency-free core shared by both apps.
   (including `{name}`/`{amount}` template substitution).
 - `channelManager.ts` — orchestrates the per-channel pipeline and the **token
   refresh scheduler**.
+- `marketEngine.ts` — the in-memory **Stream Market** momentum index + LONG/SHORT
+  round lifecycle (ticker, auto-settle, Oracle P&L). No DB except the settle.
 - `store.ts` — idempotent persistence, rule/state loading, Spotlight aggregation,
-  token-refresh-on-load.
+  prediction/market Oracle scoring, token-refresh-on-load.
 - `overlayHub.ts` — the Socket.IO server that pushes to OBS overlays.
 - `controlServer.ts` — the internal HTTP API used by the web app (guarded by a
   shared secret): start/stop/reload, refresh, preview, test.
@@ -153,7 +162,7 @@ The dependency-free core shared by both apps.
 - `app/dashboard/*` — the creator dashboard (editors, analytics, diagnostics).
 - `app/overlay/[token]/[widget]/*` — the OBS overlay pages.
 - `app/api/*` — rule/goal/boss/tip-war/prediction CRUD, the Oracle leaderboard,
-  analytics, diagnostics, live price.
+  Stream Market controls, analytics, diagnostics, live price.
 - `components/overlay/*` — the overlay widgets.
 - `lib/*` — the Blaze client, crypto, session, bridge client, price hook, and the
   pure display helpers in `format.ts`.
@@ -227,7 +236,7 @@ Each overlay is a full-screen, transparent **Browser Source**:
 ```
 /overlay/<overlayToken>/<widget>?pos=<position>
 ```
-- `widget`: `alert` · `goal` · `boss` · `tipwar` · `spotlight` · `prediction` · `oracle`
+- `widget`: `alert` · `goal` · `boss` · `tipwar` · `spotlight` · `prediction` · `oracle` · `market`
 - `pos` (optional): `top-left` · `top-center` · `top-right` · `center-left` ·
   `center` · `center-right` · `bottom-left` · `bottom-center` · `bottom-right`
 

@@ -112,6 +112,31 @@ export const OracleStateMsg = z.object({
   lastResult: z.object({ name: z.string(), points: z.number(), correct: z.boolean() }).optional(),
 });
 
+/**
+ * Stream Market tick — a live "trade the streamer" ticker. `index` is the
+ * momentum index (rises on Thanks/votes/chat, decays when quiet); `history` is a
+ * rolling series for the sparkline. `round` is the active LONG/SHORT book (null
+ * when no round is running); on settle it carries the outcome + winners.
+ */
+export const MarketTickMsg = z.object({
+  type: z.literal("market"),
+  index: z.number(),
+  history: z.array(z.number()),
+  round: z
+    .object({
+      status: z.enum(["open", "settled"]),
+      entryIndex: z.number(),
+      /** Epoch ms when the open round auto-settles. */
+      closesAt: z.number().optional(),
+      long: z.object({ backers: z.number(), thanks: z.number(), pct: z.number() }),
+      short: z.object({ backers: z.number(), thanks: z.number(), pct: z.number() }),
+      outcome: z.enum(["long", "short"]).optional(),
+      exitIndex: z.number().optional(),
+      winners: z.array(z.object({ name: z.string(), stakeThanks: z.number() })).optional(),
+    })
+    .nullable(),
+});
+
 /** Full snapshot replayed on overlay (re)connect. */
 export const StateSnapshotMsg = z.object({
   type: z.literal("state"),
@@ -131,6 +156,7 @@ export const OverlayMessage = z.discriminatedUnion("type", [
   SpotlightStateMsg,
   PredictionStateMsg,
   OracleStateMsg,
+  MarketTickMsg,
   StateSnapshotMsg,
 ]);
 export type OverlayMessage = z.infer<typeof OverlayMessage>;

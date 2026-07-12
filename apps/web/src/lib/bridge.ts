@@ -51,6 +51,21 @@ export async function previewAlert(
   }).catch(() => {});
 }
 
+/** Stream Market controls (open a LONG/SHORT round, settle, or cancel it). */
+export async function openMarket(channelId: string, durationSec: number): Promise<void> {
+  await call(`/channels/${channelId}/market/open`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ durationSec }),
+  });
+}
+export async function settleMarket(channelId: string): Promise<void> {
+  await call(`/channels/${channelId}/market/settle`, { method: "POST" });
+}
+export async function cancelMarket(channelId: string): Promise<void> {
+  await call(`/channels/${channelId}/market/cancel`, { method: "POST" });
+}
+
 /** Read the bridge's adapter status for a channel (diagnostics). */
 export async function getChannelStatus(channelId: string): Promise<unknown> {
   try {

@@ -84,6 +84,21 @@ export function createControlApp(manager: ChannelManager): Express {
     res.json({ status: manager.status(req.params.id) ?? null });
   });
 
+  // Stream Market: open a LONG/SHORT round, settle it now, or cancel it.
+  app.post("/channels/:id/market/open", (req, res) => {
+    const durationSec = Number((req.body ?? {}).durationSec) || 180;
+    manager.openMarket(req.params.id, Math.min(Math.max(durationSec, 15), 900));
+    res.json({ ok: true });
+  });
+  app.post("/channels/:id/market/settle", async (req, res) => {
+    await manager.settleMarket(req.params.id);
+    res.json({ ok: true });
+  });
+  app.post("/channels/:id/market/cancel", (req, res) => {
+    manager.cancelMarket(req.params.id);
+    res.json({ ok: true });
+  });
+
   app.post("/channels/:id/test", async (req, res) => {
     const parsed = TestBody.safeParse(req.body ?? {});
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
